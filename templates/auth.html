@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content=" " />
+    <meta
+      name="keywords"
+      content=" "
+    />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   
+    <title>Login & Signup Form HTML CSS </title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <script src="../custom-scripts.js" defer></script>
+  </head>
+  <body>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+         <p>{{ message }}</p>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <section class="wrapper">
+      <div class="form signup">
+        <header>Signup</header>
+        <form method="post" action="{{ url_for('register') }}">
+          <input type="text" name="name" placeholder="Username" required />
+          <input type="email" name="email" placeholder="Email address" required />
+          <input type="password" name="password" placeholder="Password" required />
+          <button type="submit" class="btn">SignUp</button>
+          <div class="checkbox">
+            <input type="checkbox" id="signupCheck" required/>
+            <label for="signupCheck">I accept all terms & conditions</label>
+          </div>
+          
+        </form>
+      </div>
+
+      <div class="form login">
+        <header>Login</header>
+        <form method="post" action="{{ url_for('login') }}">
+          <input type="email" name="email" placeholder="Email address" required />
+          <input type="password" name="password" placeholder="Password" required />
+          <button type="submit" class="bt0">LogIn</button>
+          <a href="#">Forgot password?</a>
+        </form>
+      </div>
+      
+
+
+      <script>
+        const wrapper = document.querySelector(".wrapper"),
+          signupHeader = document.querySelector(".signup header"),
+          loginHeader = document.querySelector(".login header");
+
+        loginHeader.addEventListener("click", () => {
+          wrapper.classList.add("active");
+        });
+        signupHeader.addEventListener("click", () => {
+          wrapper.classList.remove("active");
+        });
+      </script>
+    </section>
+  </body>
+</html>

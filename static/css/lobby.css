@@ -3,10 +3,11 @@
   max-width: 600px;
   border-radius: 10px;
   background-color: #262625;
-  position: fixed;
+  position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  z-index: 10; 
 }
 
 #lobby__form {
@@ -87,4 +88,28 @@
 
 .avatar__option__selected {
   border: 3px solid #845695;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background-color: #845695;
+  color: white;
+  text-align: center;
+}
+
+/* Recorded sessions styling */
+#recorded_sessions {
+  width: 90%;
+  max-width: 800px;
+  margin: 20px auto; /* Center align horizontally and provide vertical spacing */
+  padding: 1.5em;
+  background-color: #262625;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  position: relative; /* Ensure it follows normal flow */
+  top: 600px; /* Increase this value to lower the element */
 }

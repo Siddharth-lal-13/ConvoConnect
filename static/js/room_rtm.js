@@ -1,3 +1,5 @@
+var messages = [];
+
 let handleMemberJoined = async (MemberId) => {
     console.log('A new member has joined the room:', MemberId)
     addMemberToDom(MemberId)
@@ -49,6 +51,7 @@ let getMembers = async () => {
     }
 }
 
+
 let handleChannelMessage = async (messageData, MemberId) => {
     console.log('A new message was received')
     let data = JSON.parse(messageData.text)
@@ -72,13 +75,47 @@ let handleChannelMessage = async (messageData, MemberId) => {
 }
 
 let sendMessage = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    let message = e.target.message.value
-    channel.sendMessage({text:JSON.stringify({'type':'chat', 'message':message, 'displayName':displayName})})
-    addMessageToDom(displayName, message)
-    e.target.reset()
+    let message = messageInput.value.trim();
+    if (message.length === 0) {
+        return;
+    }
+
+    channel.sendMessage({ text: JSON.stringify({ 'type': 'chat', 'message': message, 'displayName': displayName }) });
+    addMessageToDom(displayName, message);
+    messages.push({displayName : message})
+
+    messageInput.value = '';
+
+    // Send user message to Flask for bot processing
+    if (message.toLowerCase().includes("jarvis!")) {
+        try {
+            const response = await fetch('/api/bot-response', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                const botMessage = data.bot_message;
+    
+                messages.push(botMessage)
+    
+                // Add bot response to the DOM
+                addBotMessageToDom(botMessage);
+            } else {
+                console.error('Failed to get response from bot');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
 }
+
 
 let addMessageToDom = (name, message) => {
     let messagesWrapper = document.getElementById('messages')
@@ -103,7 +140,7 @@ let addBotMessageToDom = (botmessage) => {
 
     let newMessage = `<div class="message__wrapper">
                         <div class="message__body__bot">
-                            <strong class="message__author__bot">🤖 Jarvis Bot</strong>
+                            <strong class="message__author__bot">🤖 Jarvis AI</strong>
                             <p class="message__text__bot">${botmessage}</p>
                         </div>
                     </div>`
@@ -115,6 +152,49 @@ let addBotMessageToDom = (botmessage) => {
         lastMessage.scrollIntoView()
     }
 }
+
+const messageInput = document.getElementById('message-input');
+
+document.addEventListener('DOMContentLoaded', () => {
+    const emojiButton = document.getElementById('emoji-button');
+    const emojiPickerContainer = document.getElementById('emoji-picker-container');
+    
+    const sendButton = document.getElementById('send-button');
+
+    let pickerVisible = false;
+
+    console.log('EmojiMart loaded:', typeof EmojiMart !== 'undefined');
+
+    const picker = new EmojiMart.Picker({
+        onEmojiSelect: (emoji) => {
+            console.log('Emoji selected:', emoji.native);
+            if (messageInput) {
+                messageInput.value += emoji.native;
+            } else {
+                console.error('messageInput is not found');
+            }
+            emojiPickerContainer.style.display = 'none';
+            pickerVisible = false;
+        }
+    });
+
+    emojiPickerContainer.appendChild(picker);
+
+    emojiButton.addEventListener('click', () => {
+        pickerVisible = !pickerVisible;
+        emojiPickerContainer.style.display = pickerVisible ? 'block' : 'none';
+        console.log('Picker visible:', pickerVisible);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!emojiPickerContainer.contains(event.target) && event.target !== emojiButton) {
+            emojiPickerContainer.style.display = 'none';
+            pickerVisible = false;
+        }
+    });
+
+    sendButton.addEventListener('click', (e) => sendMessage(e));
+});
 
 let leaveChannel = async () => {
     await channel.leave()

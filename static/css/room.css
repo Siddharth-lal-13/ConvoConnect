@@ -137,23 +137,40 @@
 }
 
 #message__form {
-  width: 23.2rem;
+  width: 100%;
   position: fixed;
   bottom: 0;
-  display: block;
+  display: flex;
+  align-items: center;
   background-color: #1a1a1a;
-  padding: 1em;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+
+#emoji-button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+}
+
+#emoji-picker-container {
+  position: absolute;
+  bottom: 60px; 
+  left: 0;
+  z-index: 2;
+  display: none; /* Hidden by default */
 }
 
 #message__form input {
   color: #fff;
-  width: 100%;
+  flex-grow: 1;
   border: none;
   border-radius: 5px;
-  padding: 18px;
+  padding: 0.5rem;
   font-size: 14px;
-  box-sizing: border-box;
   background-color: #3f434a;
+  margin: 0 0.5rem;
 }
 
 #message__form input:focus {
@@ -162,6 +179,20 @@
 
 #message__form input::placeholder {
   color: #707575;
+}
+
+
+#send-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+#send-button img {
+  display: inline-block;
 }
 
 #stream__container {
@@ -214,7 +245,6 @@
   height: 300px;
   width: 300px;
 
-  background-image: url("/images/4.png");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 75px;
@@ -351,4 +381,55 @@
   left: 50%;
   transform: translateX(-50%);
   cursor: pointer;
+}
+
+.dropbtn {
+  color: white;
+  padding: 16px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  bottom: 50px; /* Adjust as needed to make the dropdown open upwards */
+  border-radius: 50%;
+  color: white;
+  background-color: #3f434a;
+
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+.dropdown-content button {
+    padding: 12px 12px;
+    text-decoration: none;
+    display: block;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.dropdown-content button:hover {
+    background-color: rgba(0, 0, 0, 0.1); /* Hover effect with transparency */
+}
+
+.show {
+    display: block;
+}
+
+.dropbtn.active {
+    background-color: #ddd; /* Active button background color */
+}
+
+#record-btn.active {
+  border-radius: 50%;
+  background-color: #845695;
 }

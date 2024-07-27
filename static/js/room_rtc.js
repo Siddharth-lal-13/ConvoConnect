@@ -1,4 +1,4 @@
-const APP_ID = "8d95c510b4a24e95a4c961cefaab43d4"
+const APP_ID = WEB_API
 
 let uid = sessionStorage.getItem('uid')
 if(!uid){
@@ -28,8 +28,19 @@ if(!displayName){
 let localTracks = []
 let remoteUsers = {}
 
+let mediaRecorder;
+let localVideoFilePath;
+let chunks = [];
+
+var participants = [];
+
 let localScreenTracks;
 let sharingScreen = false;
+
+function getInitials(username) {
+    return username.split(' ').map(name => name[0].toUpperCase()).join('');
+}
+
 
 let joinRoomInit = async () => {
     rtmClient = await AgoraRTM.createInstance(APP_ID)
@@ -46,6 +57,7 @@ let joinRoomInit = async () => {
 
     getMembers()
     addBotMessageToDom(`Welcome to the room ${displayName}! 👋`)
+    participants.push(displayName)
 
     client = AgoraRTC.createClient({mode:'rtc', codec:'vp8'})
     await client.join(APP_ID, roomId, token, uid)
@@ -87,6 +99,13 @@ let switchToCamera = async () => {
     document.getElementById('mic-btn').classList.remove('active')
     document.getElementById('screen-btn').classList.remove('active')
 
+    // Hide the video element when the camera is off
+    document.getElementById(`user-${uid}`).style.display = 'none';
+    
+    // Add the background image to the container
+    document.getElementById(`user-container-${uid}`).style.backgroundImage = `url('https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&rounded=true&background=random&bold=true')`;
+    console.log(displayName)
+
     localTracks[1].play(`user-${uid}`)
     await client.publish([localTracks[1]])
 }
@@ -100,9 +119,10 @@ let handleUserPublished = async (user, mediaType) => {
 
     let player = document.getElementById(`user-container-${user.uid}`)
     if(player === null){
-        player = `<div class="video__container" id="user-container-${user.uid}">
+        player = `<div class="video__container" id="user-container-${user.uid}" style="background-image: url('https://ui-avatars.com/api/?name=${user.name}&rounded=true&background=random&bold=true')">
                 <div class="video-player" id="user-${user.uid}"></div>
             </div>`
+        console.log(user.name)
 
         document.getElementById('streams__container').insertAdjacentHTML('beforeend', player)
         document.getElementById(`user-container-${user.uid}`).addEventListener('click', expandVideoFrame)
@@ -160,13 +180,25 @@ let toggleMic = async (e) => {
 
 let toggleCamera = async (e) => {
     let button = e.currentTarget
+    let videoContainer = document.getElementById(`user-container-${uid}`);
+    let videoElement = document.getElementById(`user-${uid}`);
 
     if (localTracks[1].muted){
         await localTracks[1].setMuted(false)
         button.classList.add('active')
+
+        // Show video and remove background image
+        videoElement.style.display = 'block';
+        videoContainer.style.backgroundImage = 'none';
+
     }else{
         await localTracks[1].setMuted(true)
         button.classList.remove('active')
+
+        // Hide video and set background image
+        videoElement.style.display = 'none';
+        videoContainer.style.backgroundImage = `url('https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&rounded=true&background=random&bold=true')`;
+        console.log(displayName)
     }
 }
 
@@ -186,7 +218,7 @@ let toggleScreen = async (e) => {
         document.getElementById(`user-container-${uid}`).remove()
         displayFrame.style.display = 'block'
 
-        let player = `<div class="video__container" id="user-container-${uid}">
+        let player = `<div class="video__container" id="user-container-${uid}" style="background-image: url('https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&rounded=true&background=random&bold=true')">
                     <div class="video-player" id="user-${uid}"></div>
                 </div>`
 
@@ -213,6 +245,94 @@ let toggleScreen = async (e) => {
         switchToCamera()
     }
 }
+
+let isRecording = false;
+
+async function startRecording() {
+    const combinedStream = new MediaStream();
+
+    combinedStream.addTrack(localTracks[0].getMediaStreamTrack());  // Add local audio track
+    combinedStream.addTrack(localTracks[1].getMediaStreamTrack());  // Add local video track
+
+    for (let userId in remoteUsers) {
+        const user = remoteUsers[userId];
+        if (user.audioTrack) {
+            combinedStream.addTrack(user.audioTrack.getMediaStreamTrack());  // Add remote audio track
+        }
+        if (user.videoTrack) {
+            combinedStream.addTrack(user.videoTrack.getMediaStreamTrack());  // Add remote video track
+        }
+    }
+
+    mediaRecorder = new MediaRecorder(combinedStream);
+
+    mediaRecorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+            chunks.push(event.data);
+        }
+    };
+
+    mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const formData = new FormData();
+        formData.append('file', blob, 'recording.webm');
+
+        try {
+            const response = await fetch('/upload-video', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            localVideoFilePath = result.file_path;
+            await saveSessionData();
+        } catch (error) {
+            console.error('Error uploading video:', error);
+        }
+    };
+
+    mediaRecorder.start();
+    document.getElementById('record-btn').classList.add('active');
+    isRecording = true;
+}
+
+async function stopRecording() {
+    mediaRecorder.stop();
+    document.getElementById('record-btn').classList.remove('active');
+    isRecording = false;
+}
+
+let toggleRecording = async () => {
+    if (isRecording) {
+        await stopRecording();
+    } else {
+        await startRecording();
+    }
+}
+
+let saveSessionData = async () => {
+    let participants_list = participants;
+    let messages_list = messages;
+    
+    try {
+        const response = await fetch('/record-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                channel_name: inviteId,
+                video_link: localVideoFilePath,
+                participants: JSON.stringify(participants_list),
+                messages: JSON.stringify(messages_list)
+            })
+        });
+        const result = await response.json();
+        console.log('Session recorded successfully:', result.message);
+    } catch (error) {
+        console.error('Error saving session data:', error);
+    }
+};
+
 
 let leaveStream = async (e) => {
     e.preventDefault()
@@ -250,5 +370,24 @@ document.getElementById('mic-btn').addEventListener('click', toggleMic)
 document.getElementById('screen-btn').addEventListener('click', toggleScreen)
 document.getElementById('join-btn').addEventListener('click', joinStream)
 document.getElementById('leave-btn').addEventListener('click', leaveStream)
+
+document.addEventListener("DOMContentLoaded", function() {
+    var dropdown = document.getElementById("myDropdown");
+    var button = document.getElementById("dropbtn");
+
+    button.addEventListener("click", function() {
+        dropdown.classList.toggle("show");
+        button.classList.toggle("active");
+    });
+
+    window.addEventListener("click", function(event) {
+        if (!event.target.closest('.dropbtn') && !event.target.closest('.dropdown-content')) {
+            dropdown.classList.remove("show");
+            button.classList.remove("active");
+        }
+    });
+});
+
+document.getElementById('record-btn').addEventListener('click', toggleRecording);
 
 joinRoomInit()
