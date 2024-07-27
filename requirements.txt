@@ -1,0 +1,8 @@
+Werkzeug
+Flask
+flask_sqlalchemy
+SQLAlchemy
+gunicorn==21.2.0
+Flask_Login
+psycopg2-binary==2.9.9
+google.generativeai
