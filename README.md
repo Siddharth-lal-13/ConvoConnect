@@ -1,9 +1,9 @@
-# ConvoConnect - Real-Time Video Streaming & Group Calling Web Application (Demo)
+# ConvoConnect - Real-Time Video Streaming & Group Calling Web Application
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue) ![Flask](https://img.shields.io/badge/Flask-2.3-green) ![WebRTC](https://img.shields.io/badge/WebRTC-RealTime-orange) ![Socket.io](https://img.shields.io/badge/Socket.io-RealTimeChat-red)
 
 ## Overview
-ConvoConnect is a robust, real-time video streaming and group calling web application capable of hosting over 100 participants simultaneously. This demo repository highlights the architecture and key features of the original project, including a live chat box powered by AI (Google Gemini 1.5 Flash) with emoji support, screen recording, participant list generation, and chat recording. The original application is hosted on Render at [https://convo-connect-iypz.onrender.com/](https://convo-connect-iypz.onrender.com/) (replace with your actual link).
+ConvoConnect is a robust, real-time video streaming and group calling web application capable of hosting over 100 participants simultaneously. This demo repository highlights the architecture and key features of the original project, including a live chat box powered by AI (Google Gemini 1.5 Flash) with emoji support, screen recording, participant list generation, and chat recording. The original application is hosted on Render at [https://convo-connect-iypz.onrender.com](https://convo-connect-iypz.onrender.com).
 
 **Note**: This repository is a sanitized demo showcasing design principles and select implementations, not the complete proprietary codebase.
 
