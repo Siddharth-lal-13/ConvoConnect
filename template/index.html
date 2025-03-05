@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ConvoConnect</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
+</head>
+<body>
+    <h1>ConvoConnect</h1>
+    <video id="videoFeed" autoplay></video>
+    <div id="participants">Participants: 0</div>
+    <div id="chatBox">
+        <div id="messages"></div>
+        <input id="msgInput" type="text" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+        <input type="file" id="fileInput">
+        <button onclick="sendFile()">Share File</button>
+    </div>
+    <script>
+        const socket = io.connect('http://localhost:5000');
+        socket.on('message', (data) => {
+            const msgDiv = document.getElementById('messages');
+            msgDiv.innerHTML += `<p>${data.sender}: ${data.text}</p>`;
+            msgDiv.innerHTML += `<p>AI: ${data.ai_reply}</p>`;
+        });
+        socket.on('file_shared', (data) => {
+            const msgDiv = document.getElementById('messages');
+            msgDiv.innerHTML += `<p>${data.sender} shared: ${data.filename}</p>`;
+        });
+        function sendMessage() {
+            const msg = document.getElementById('msgInput').value;
+            socket.emit('message', { text: msg });
+            document.getElementById('msgInput').value = '';
+        }
+        function sendFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    socket.emit('file_upload', { filename: file.name, content: reader.result });
+                };
+                reader.readAsText(file);  // Simplified for demo
+            }
+        }
+    </script>
+</body>
+</html>
