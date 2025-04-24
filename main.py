@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String
 import google.generativeai as genai
 import os
+from datetime import datetime
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
@@ -29,6 +30,12 @@ upload_folder = os.path.join(user_home, 'recordings')
 if not os.path.exists(upload_folder):
     os.makedirs(upload_folder)
 app.config['UPLOAD_FOLDER'] = upload_folder
+
+# New uploads folder for chat files
+chat_upload_folder = os.path.join('static', 'uploads')
+if not os.path.exists(chat_upload_folder):
+    os.makedirs(chat_upload_folder)
+app.config['CHAT_UPLOAD_FOLDER'] = chat_upload_folder
 
 
 # ---------------------------------------- DATABASE -------------------------------------------------------
@@ -230,10 +237,52 @@ def upload_video():
     if file.filename == '':
         return jsonify({'message': 'No selected file'}), 400
     if file:
-        filename = secure_filename(file.filename)
+        # Get the original file extension
+        _, file_extension = os.path.splitext(file.filename)
+
+        # Generate base filename with current date
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        base_filename = f"recording-{current_date}"
+        filename = f"{base_filename}{file_extension}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        # Check for existing files and append incrementing number if needed
+        counter = 1
+        while os.path.exists(filepath):
+            filename = f"{base_filename}({counter}){file_extension}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            counter += 1
+
+        # Save the file with the unique filename
         file.save(filepath)
         return jsonify({'message': 'File uploaded successfully', 'file_path': filepath})
+
+
+@app.route('/upload-file', methods=['POST'])
+@login_required
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
+    if file:
+        # Validate file type
+        allowed_types = ['image/jpeg', 'image/png', 'application/pdf', 'text/plain']
+        if file.mimetype not in allowed_types:
+            return jsonify({'message': 'Invalid file type. Only JPEG, PNG, PDF, TXT allowed.'}), 400
+        # Validate file size (10MB)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        if file_size > 10 * 1024 * 1024:
+            return jsonify({'message': 'File too large. Max size is 10MB.'}), 400
+        file.seek(0)  # Reset file pointer
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['CHAT_UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        file_url = url_for('static', filename=f'uploads/{filename}', _external=True)
+        return jsonify({'message': 'File uploaded successfully', 'file_url': file_url, 'file_name': filename,
+                        'file_type': file.mimetype})
 
 
 @app.route('/record-session', methods=['POST'])
@@ -244,7 +293,6 @@ def record_session():
     video_link = data['video_link']
     participants = data['participants']
     messages = data['messages']
-
     new_record = SessionRecord(
         channel_name=channel_name,
         video_link=video_link,
@@ -254,7 +302,6 @@ def record_session():
     )
     db.session.add(new_record)
     db.session.commit()
-
     return jsonify({'message': 'Session recorded successfully'})
 
 
@@ -265,4 +312,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)

@@ -51,21 +51,26 @@ let getMembers = async () => {
     }
 }
 
-
 let handleChannelMessage = async (messageData, MemberId) => {
     console.log('A new message was received')
     let data = JSON.parse(messageData.text)
 
     if(data.type === 'chat'){
         addMessageToDom(data.displayName, data.message)
+        messages.push({ displayName: data.displayName, message: data.message, type: 'chat' })
+    }
+
+    if(data.type === 'file'){
+        addFileMessageToDom(data.displayName, data.fileUrl, data.fileName, data.fileType)
+        messages.push({ displayName: data.displayName, fileUrl: data.fileUrl, fileName: data.fileName, fileType: data.fileType, type: 'file' })
     }
 
     if(data.type === 'user_left'){
         document.getElementById(`user-container-${data.uid}`).remove()
 
-        if(userIdInDisplayFrame === `user-container-${uid}`){
+        if(userIdInDisplayFrame === `user-container-${data.uid}`){
             displayFrame.style.display = null
-    
+
             for(let i = 0; videoFrames.length > i; i++){
                 videoFrames[i].style.height = '300px'
                 videoFrames[i].style.width = '300px'
@@ -84,11 +89,10 @@ let sendMessage = async (e) => {
 
     channel.sendMessage({ text: JSON.stringify({ 'type': 'chat', 'message': message, 'displayName': displayName }) });
     addMessageToDom(displayName, message);
-    messages.push({displayName : message})
+    messages.push({ displayName: displayName, message: message, type: 'chat' })
 
     messageInput.value = '';
 
-    // Send user message to Flask for bot processing
     if (message.toLowerCase().includes("jarvis!")) {
         try {
             const response = await fetch('/api/bot-response', {
@@ -98,14 +102,13 @@ let sendMessage = async (e) => {
                 },
                 body: JSON.stringify({ message: message })
             });
-    
+
             if (response.ok) {
                 const data = await response.json();
                 const botMessage = data.bot_message;
-    
-                messages.push(botMessage)
-    
-                // Add bot response to the DOM
+
+                messages.push({ displayName: 'Jarvis AI', message: botMessage, type: 'bot' })
+
                 addBotMessageToDom(botMessage);
             } else {
                 console.error('Failed to get response from bot');
@@ -116,6 +119,46 @@ let sendMessage = async (e) => {
     }
 }
 
+let handleFileUpload = async () => {
+    const fileInput = document.getElementById('file-input');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/upload-file', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const { file_url, file_name, file_type } = data;
+
+            channel.sendMessage({
+                text: JSON.stringify({
+                    'type': 'file',
+                    'fileUrl': file_url,
+                    'fileName': file_name,
+                    'fileType': file_type,
+                    'displayName': displayName
+                })
+            });
+            addFileMessageToDom(displayName, file_url, file_name, file_type);
+            messages.push({ displayName: displayName, fileUrl: file_url, fileName: file_name, fileType: file_type, type: 'file' });
+        } else {
+            console.error('File upload failed');
+            alert('Failed to upload file. Please login and try again.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error uploading file. Please try again.');
+    }
+
+    fileInput.value = '';
+}
 
 let addMessageToDom = (name, message) => {
     let messagesWrapper = document.getElementById('messages')
@@ -135,13 +178,38 @@ let addMessageToDom = (name, message) => {
     }
 }
 
-let addBotMessageToDom = (botmessage) => {
+let addFileMessageToDom = (name, fileUrl, fileName, fileType) => {
+    let messagesWrapper = document.getElementById('messages')
+
+    let content = '';
+    if (fileType && fileType.startsWith('image/')) {
+        content = `<img src="${fileUrl}" alt="${fileName}" class="message__file__image" /><br><a href="${fileUrl}" download="${fileName}" class="message__file__link">Download ${fileName}</a>`;
+    } else {
+        content = `<a href="${fileUrl}" download="${fileName}" class="message__file__link">${fileName}</a>`;
+    }
+
+    let newMessage = `<div class="message__wrapper">
+                        <div class="message__body">
+                            <strong class="message__author">${name}</strong>
+                            ${content}
+                        </div>
+                    </div>`
+
+    messagesWrapper.insertAdjacentHTML('beforeend', newMessage)
+
+    let lastMessage = document.querySelector('#messages .message__wrapper:last-child')
+    if(lastMessage){
+        lastMessage.scrollIntoView()
+    }
+}
+
+let addBotMessageToDom = (botMessage) => {
     let messagesWrapper = document.getElementById('messages')
 
     let newMessage = `<div class="message__wrapper">
                         <div class="message__body__bot">
                             <strong class="message__author__bot">🤖 Jarvis AI</strong>
-                            <p class="message__text__bot">${botmessage}</p>
+                            <p class="message__text__bot">${botMessage}</p>
                         </div>
                     </div>`
 
@@ -158,42 +226,51 @@ const messageInput = document.getElementById('message-input');
 document.addEventListener('DOMContentLoaded', () => {
     const emojiButton = document.getElementById('emoji-button');
     const emojiPickerContainer = document.getElementById('emoji-picker-container');
-    
     const sendButton = document.getElementById('send-button');
+    const fileInput = document.getElementById('file-input');
 
     let pickerVisible = false;
 
-    console.log('EmojiMart loaded:', typeof EmojiMart !== 'undefined');
-
-    const picker = new EmojiMart.Picker({
-        onEmojiSelect: (emoji) => {
-            console.log('Emoji selected:', emoji.native);
-            if (messageInput) {
-                messageInput.value += emoji.native;
-            } else {
-                console.error('messageInput is not found');
+    if (typeof EmojiMart !== 'undefined') {
+        console.log('EmojiMart loaded successfully');
+        const picker = new EmojiMart.Picker({
+            onEmojiSelect: (emoji) => {
+                console.log('Emoji selected:', emoji.native);
+                if (messageInput) {
+                    messageInput.value += emoji.native;
+                } else {
+                    console.error('messageInput is not found');
+                }
+                emojiPickerContainer.style.display = 'none';
+                pickerVisible = false;
             }
-            emojiPickerContainer.style.display = 'none';
-            pickerVisible = false;
-        }
-    });
+        });
 
-    emojiPickerContainer.appendChild(picker);
+        emojiPickerContainer.appendChild(picker);
 
-    emojiButton.addEventListener('click', () => {
-        pickerVisible = !pickerVisible;
-        emojiPickerContainer.style.display = pickerVisible ? 'block' : 'none';
-        console.log('Picker visible:', pickerVisible);
-    });
+        emojiButton.addEventListener('click', () => {
+            pickerVisible = !pickerVisible;
+            emojiPickerContainer.style.display = pickerVisible ? 'block' : 'none';
+            console.log('Picker visible:', pickerVisible);
+        });
 
-    document.addEventListener('click', (event) => {
-        if (!emojiPickerContainer.contains(event.target) && event.target !== emojiButton) {
-            emojiPickerContainer.style.display = 'none';
-            pickerVisible = false;
-        }
-    });
+        document.addEventListener('click', (event) => {
+            if (!emojiPickerContainer.contains(event.target) && event.target !== emojiButton) {
+                emojiPickerContainer.style.display = 'none';
+                pickerVisible = false;
+            }
+        });
+    } else {
+        console.error('EmojiMart failed to load');
+        emojiButton.style.display = 'none';
+        const errorMessage = document.createElement('p');
+        errorMessage.style.color = '#ff5050';
+        errorMessage.textContent = 'Emoji picker unavailable';
+        emojiPickerContainer.appendChild(errorMessage);
+    }
 
     sendButton.addEventListener('click', (e) => sendMessage(e));
+    fileInput.addEventListener('change', handleFileUpload);
 });
 
 let leaveChannel = async () => {
