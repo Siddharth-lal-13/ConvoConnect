@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
+from flask import Flask, render_template, jsonify, request, flash, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, current_user, UserMixin, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -8,8 +8,15 @@ from sqlalchemy import Integer, String
 import google.generativeai as genai
 import os
 from datetime import datetime
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("FLASK_KEY")
@@ -25,17 +32,14 @@ def load_user(user_id):
     return db.get_or_404(User, user_id)
 
 
-user_home = os.path.expanduser('~')
-upload_folder = os.path.join(user_home, 'recordings')
-if not os.path.exists(upload_folder):
-    os.makedirs(upload_folder)
-app.config['UPLOAD_FOLDER'] = upload_folder
-
 # New uploads folder for chat files
 chat_upload_folder = os.path.join('static', 'uploads')
 if not os.path.exists(chat_upload_folder):
     os.makedirs(chat_upload_folder)
 app.config['CHAT_UPLOAD_FOLDER'] = chat_upload_folder
+
+# Google Drive API scopes
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
 
 # ---------------------------------------- DATABASE -------------------------------------------------------
@@ -56,6 +60,7 @@ class User(UserMixin, db.Model):
     email: Mapped[str] = mapped_column(String(100), unique=True)
     password: Mapped[str] = mapped_column(String(100))
     name: Mapped[str] = mapped_column(String(100))
+    google_token: Mapped[str] = mapped_column(String(500), nullable=True)  # Store Google OAuth token
 
     session_records = relationship('SessionRecord', back_populates='user')
 
@@ -122,6 +127,78 @@ def replace_stars_with_bold_numbers(s):
     return ''.join(s_list)
 
 
+# ----------------------------------------- GOOGLE AUTH ROUTES -------------------------------------------------
+
+@app.route('/login/google')
+def login_google():
+    flow = InstalledAppFlow.from_client_config(
+        {
+            "web": {
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "redirect_uris": [url_for('auth_google_callback', _external=True)],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        },
+        SCOPES
+    )
+    flow.redirect_uri = url_for('auth_google_callback', _external=True)
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+    session['state'] = state
+    return redirect(authorization_url)
+
+
+@app.route('/auth/google/callback')
+def auth_google_callback():
+    state = session.get('state')
+    flow = InstalledAppFlow.from_client_config(
+        {
+            "web": {
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "redirect_uris": [url_for('auth_google_callback', _external=True)],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        },
+        SCOPES,
+        state=state
+    )
+    flow.redirect_uri = url_for('auth_google_callback', _external=True)
+    authorization_response = request.url
+    flow.fetch_token(authorization_response=authorization_response)
+
+    credentials = flow.credentials
+    token = credentials.to_json()
+
+    # Get user info
+    service = build('drive', 'v3', credentials=credentials)
+    user_info = service.about().get(fields='user').execute()
+    email = user_info['user']['emailAddress']
+
+    # Check if user exists, if not create one
+    result = db.session.execute(db.select(User).where(User.email == email))
+    user = result.scalar()
+    if not user:
+        user = User(
+            email=email,
+            name=user_info['user'].get('displayName', email.split('@')[0]),
+            password=generate_password_hash(str(credentials.refresh_token), method="pbkdf2:sha256", salt_length=8),
+            google_token=token
+        )
+        db.session.add(user)
+    else:
+        user.google_token = token
+    db.session.commit()
+
+    login_user(user)
+    return redirect(url_for('home'))
+
+
 # ----------------------------------------- ROUTES -------------------------------------------------
 
 @app.route("/")
@@ -132,8 +209,7 @@ def home():
     else:
         user_sessions = []
 
-    return render_template("lobby.html", logged_in=current_user.is_authenticated, user_sessions=user_sessions,
-                           directory=upload_folder)
+    return render_template("lobby.html", logged_in=current_user.is_authenticated, user_sessions=user_sessions)
 
 
 @app.route('/auth')
@@ -237,6 +313,10 @@ def upload_video():
     if file.filename == '':
         return jsonify({'message': 'No selected file'}), 400
     if file:
+        # Check if user has Google token
+        if not current_user.google_token:
+            return jsonify({'error': 'Please log in with Google to upload to Drive'}), 403
+
         # Get the original file extension
         _, file_extension = os.path.splitext(file.filename)
 
@@ -244,18 +324,51 @@ def upload_video():
         current_date = datetime.now().strftime('%Y-%m-%d')
         base_filename = f"recording-{current_date}"
         filename = f"{base_filename}{file_extension}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
-        # Check for existing files and append incrementing number if needed
+        # Save temporarily on Render
+        temp_filepath = os.path.join('/tmp', filename)
         counter = 1
-        while os.path.exists(filepath):
+        while os.path.exists(temp_filepath):
             filename = f"{base_filename}({counter}){file_extension}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            temp_filepath = os.path.join('/tmp', filename)
             counter += 1
+        file.save(temp_filepath)
 
-        # Save the file with the unique filename
-        file.save(filepath)
-        return jsonify({'message': 'File uploaded successfully', 'file_path': filepath})
+        try:
+            # Refresh credentials if needed
+            credentials = Credentials.from_authorized_user_info(
+                eval(current_user.google_token), SCOPES
+            )
+            if credentials.expired and credentials.refresh_token:
+                credentials.refresh(Request())
+
+            # Build Drive service
+            service = build('drive', 'v3', credentials=credentials)
+
+            # Upload to Google Drive
+            file_metadata = {
+                'name': filename,
+                'parents': ['root']  # Save to root of Drive; can create a folder if needed
+            }
+            media = MediaFileUpload(temp_filepath)
+            drive_file = service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id,webViewLink'
+            ).execute()
+
+            # Delete temporary file
+            os.remove(temp_filepath)
+
+            return jsonify({
+                'message': 'File uploaded to Google Drive successfully',
+                'file_path': drive_file.get('webViewLink')
+            })
+        except Exception as e:
+            # Clean up in case of error
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
+            return jsonify({'error': str(e)}), 500
 
 
 @app.route('/upload-file', methods=['POST'])
@@ -295,7 +408,7 @@ def record_session():
     messages = data['messages']
     new_record = SessionRecord(
         channel_name=channel_name,
-        video_link=video_link,
+        video_link=video_link,  # This will now be a Google Drive link
         participants=participants,
         messages=messages,
         user_id=current_user.id

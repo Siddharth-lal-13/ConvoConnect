@@ -13,8 +13,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000000;
-  
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url('https://source.unsplash.com/random/1920x1080?blur'); /* Black base with subtle gradient and blurred background image */
+  background-size: cover;
+  background-attachment: fixed;
 }
 
 .wrapper {
@@ -23,7 +24,7 @@ body {
   width: 100%;
   border-radius: 12px;
   padding: 20px 30px 120px;
-  background: #845695;
+  background: #845695; /* Solid purple background */
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
@@ -37,7 +38,7 @@ body {
   padding: 20px 140px;
   border-radius: 50%;
   height: 100%;
-  background: #ffffff;
+  background: #ffffff; /* Solid white background */
   transition: all 0.6s ease;
 }
 
@@ -50,7 +51,7 @@ body {
 .form header {
   font-size: 30px;
   text-align: center;
-  color: #000;
+  color: #fff;
   font-weight: 600;
   cursor: pointer;
 }
@@ -84,11 +85,12 @@ form input {
   font-weight: 400;
   color: #ffffff;
   border-radius: 8px;
-  background: #262625;
+  background: #262625; /* Solid dark background for inputs */
 }
 
 .form.login input {
   border: 1px solid #aaa;
+  color: #333; /* Darker text for contrast on white background */
 }
 
 .form.login input:focus {
@@ -169,4 +171,23 @@ form input[type="submit"] {
 .bt0:hover {
   background-color: #000000;
   color: white;
+}
+
+.google-login {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.google-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #4285F4;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.google-btn:hover {
+  background-color: #3267D6;
 }

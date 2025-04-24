@@ -41,7 +41,6 @@ function getInitials(username) {
     return username.split(' ').map(name => name[0].toUpperCase()).join('');
 }
 
-
 let joinRoomInit = async () => {
     rtmClient = await AgoraRTM.createInstance(APP_ID)
     await rtmClient.login({uid, token})
@@ -69,7 +68,7 @@ let joinRoomInit = async () => {
 let joinStream = async () => {
     document.getElementById('join-btn').style.display = 'none'
     document.getElementsByClassName('stream__actions')[0].style.display = 'flex'
-   
+
     localTracks = await AgoraRTC.createMicrophoneAndCameraTracks({}, {encoderConfig:{
         width:{min:640, ideal:1920, max:1920},
         height:{min:480, ideal:1080, max:1080}
@@ -86,7 +85,6 @@ let joinStream = async () => {
     await client.publish([localTracks[0], localTracks[1]])
 }
 
-
 let switchToCamera = async () => {
     let player = `<div class="video__container" id="user-container-${uid}">
                     <div class="video-player" id="user-${uid}"></div>
@@ -101,7 +99,7 @@ let switchToCamera = async () => {
 
     // Hide the video element when the camera is off
     document.getElementById(`user-${uid}`).style.display = 'none';
-    
+
     // Add the background image to the container
     document.getElementById(`user-container-${uid}`).style.backgroundImage = `url('https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&rounded=true&background=random&bold=true')`;
     console.log(displayName)
@@ -109,8 +107,6 @@ let switchToCamera = async () => {
     localTracks[1].play(`user-${uid}`)
     await client.publish([localTracks[1]])
 }
-
-
 
 let handleUserPublished = async (user, mediaType) => {
     remoteUsers[user.uid] = user
@@ -126,7 +122,7 @@ let handleUserPublished = async (user, mediaType) => {
 
         document.getElementById('streams__container').insertAdjacentHTML('beforeend', player)
         document.getElementById(`user-container-${user.uid}`).addEventListener('click', expandVideoFrame)
-   
+
     }
 
     if(displayFrame.style.display){
@@ -142,7 +138,6 @@ let handleUserPublished = async (user, mediaType) => {
     if(mediaType === 'audio'){
         user.audioTrack.play()
     }
-
 }
 
 let handleUserLeft = async (user) => {
@@ -164,7 +159,6 @@ let handleUserLeft = async (user) => {
     }
 }
 
-
 let toggleMic = async (e) => {
     let button = e.currentTarget
 
@@ -176,7 +170,6 @@ let toggleMic = async (e) => {
         button.classList.remove('active')
     }
 }
-
 
 let toggleCamera = async (e) => {
     let button = e.currentTarget
@@ -274,16 +267,24 @@ async function startRecording() {
 
     mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'video/webm' });
+        const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        const filename = `recording-${currentDate}.webm`;
         const formData = new FormData();
-        formData.append('file', blob, 'recording.webm');
+        formData.append('file', blob, filename);
 
         try {
             const response = await fetch('/upload-video', {
                 method: 'POST',
                 body: formData
             });
+
+            if (!response.ok) {
+                console.error('Failed to upload video to Google Drive:', await response.text());
+                return;
+            }
+
             const result = await response.json();
-            localVideoFilePath = result.file_path;
+            localVideoFilePath = result.file_path; // Google Drive webViewLink
             await saveSessionData();
         } catch (error) {
             console.error('Error uploading video:', error);
@@ -312,7 +313,7 @@ let toggleRecording = async () => {
 let saveSessionData = async () => {
     let participants_list = participants;
     let messages_list = messages;
-    
+
     try {
         const response = await fetch('/record-session', {
             method: 'POST',
@@ -332,7 +333,6 @@ let saveSessionData = async () => {
         console.error('Error saving session data:', error);
     }
 };
-
 
 let leaveStream = async (e) => {
     e.preventDefault()

@@ -44,21 +44,20 @@
                  <p>👋 Create or Join Room</p>
              </div>
  
- 
             <form id="lobby__form">
- 
+
                  <div class="form__field__wrapper">
                      <label>Your Name</label>
                      <input type="text" name="name" required placeholder="Enter your display name..." />
                  </div>
- 
+
                  <div class="form__field__wrapper">
                      <label>Room Name</label>
                      <input type="text" name="room" required placeholder="Enter room name..." />
                  </div>
- 
+
                  <div class="form__field__wrapper">
-                     <button type="submit">Go to Room 
+                     <button type="submit">Go to Room
                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z"/></svg>
                     </button>
                  </div>
@@ -76,9 +75,7 @@
                         <p><strong>Participants:</strong> {{ session.participants }}</p>
                         <p><strong>Messages:</strong> {{ session.messages | e }}</p>
                         <br>
-                        <p>(To watch the recording, please navigate to the following folder on your system:)</p>
-                            <p><strong>{{ session.video_link }}</strong></p>
-                        <p>(Open the folder in your file explorer to find and play the video files.)</p>
+                        <p><strong>Recording:</strong> <a href="{{ session.video_link }}" target="_blank">View on Google Drive</a></p>
                     </li>
                 {% endfor %}
             </ul>
@@ -87,11 +84,11 @@
         {% endif %}
     </div>
     {% endif %}
-    
+
     <div class="footer">
         <p> &copy; Copyright Reserved, 2024   - Siddharth Lal </p>
     </div>
 
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93508b0eeoping',t:'MTc0NTQ0NDY3Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 <script type="text/javascript" src="{{ url_for('static', filename='js/lobby.js') }}"></script>
 </html>

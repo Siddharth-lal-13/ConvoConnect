@@ -34,8 +34,10 @@
             <input type="checkbox" id="signupCheck" required/>
             <label for="signupCheck">I accept all terms & conditions</label>
           </div>
-          
         </form>
+        <div class="google-login">
+          <a href="{{ url_for('login_google') }}" class="google-btn">Sign up with: <img src="https://www.google.com/favicon.ico" alt="Google" style="vertical-align: middle; width: 20px; height: 20px;"> Google</a>
+        </div>
       </div>
 
       <div class="form login">
@@ -46,9 +48,10 @@
           <button type="submit" class="bt0">LogIn</button>
           <a href="#">Forgot password?</a>
         </form>
+        <div class="google-login">
+          <a href="{{ url_for('login_google') }}" class="google-btn">Sign up with: <img src="https://www.google.com/favicon.ico" alt="Google" style="vertical-align: middle; width: 20px; height: 20px;"> Google</a>
+        </div>
       </div>
-      
-
 
       <script>
         const wrapper = document.querySelector(".wrapper"),
@@ -63,5 +66,5 @@
         });
       </script>
     </section>
-  </body>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93508b0eddce0c55',t:'MTc0NTQ0NDY3Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9355bd168d850711',t:'MTc0NTQ5OTE1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
