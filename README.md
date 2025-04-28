@@ -28,6 +28,7 @@ ConvoConnect is a sophisticated real-time video streaming and group calling web 
   - Clean, responsive design
   - Intuitive controls and layouts
 
+- NOTE: To use the AI in chat, call it as: jarvis!(your prompt). And currently, due to a new feature implementation, session recordings has been glitched.
 ---
 
 ## 🛠️ Technology Stack
